@@ -1,69 +1,69 @@
-name: Build OpenWrt Package
+name: Build Easy MWAN3
 
 on:
   push:
-    branches:
+    branches: 
       - main
+      - master
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build IPK
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Prepare OpenWrt SDK
+      - name: Setup OpenWrt SDK
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 file
-          
-          # Use specific stable version
-          SDK_URL="https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
-          
-          echo "Downloading SDK from $SDK_URL..."
-          wget -q -O sdk.tar.xz "$SDK_URL"
-          
-          echo "Extracting SDK..."
-          mkdir sdk_temp
-          tar -xJf sdk.tar.xz -C sdk_temp --strip-components=1
-          mv sdk_temp sdk
+          # 使用 OpenWrt 23.05 x86_64 SDK (通用性好，编译速度快)
+          wget https://downloads.openwrt.org/releases/23.05.2/targets/x86/64/openwrt-sdk-23.05.2-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar -xvf openwrt-sdk-*.tar.xz
+          mv openwrt-sdk-* sdk
 
       - name: Prepare Package
         run: |
-          # Clean up Makefile indentation (replace leading spaces with tabs)
-          # OpenWrt Makefiles require TAB indentation
-          sed -i 's/^  /\t/g' Makefile || true
-          
-          cd sdk
-          # Create package directory
-          mkdir -p package/luci-app-easy-mwan3
-          
-          # Copy source to package directory
-          rsync -av --exclude='.git' --exclude='.github' --exclude='sdk' --exclude='sdk.tar.xz' ../ package/luci-app-easy-mwan3/
-          
-          echo ">>> Updating feeds..."
+          # 将当前源码复制到 SDK 的 package 目录
+          mkdir -p sdk/package/luci-app-easy-mwan3
+          cp -r Makefile root luasrc sdk/package/luci-app-easy-mwan3/
+
+      - name: Install Feeds
+        working-directory: sdk
+        run: |
+          # 更新并安装所有 feeds (为了获取依赖库的定义)
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          
-          # Install dependencies manually to be safe
-          ./scripts/feeds install luci-base mwan3
 
       - name: Compile Package
+        working-directory: sdk
         run: |
-          cd sdk
-          # Select the package
-          echo "CONFIG_PACKAGE_luci-app-easy-mwan3=m" > .config
-          
-          # Expand full config
+          # 生成默认配置
           make defconfig
-          
-          echo ">>> Compiling..."
-          # V=s enables verbose output for debugging
-          make package/luci-app-easy-mwan3/compile V=s || make package/luci-app-easy-mwan3/compile V=s
+          # 开始编译 (V=s 显示详细日志)
+          make package/luci-app-easy-mwan3/compile V=s
 
-      - name: Upload Artifacts
+      - name: Organize Files
+        run: |
+          mkdir -p upload
+          cp sdk/bin/packages/*/base/luci-app-easy-mwan3_*.ipk upload/
+          echo "Organized files:"
+          ls -R upload/
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: luci-app-easy-mwan3-v2.1-Ultimate
-          path: sdk/bin/packages/*/base/*.ipk
+          name: luci-app-easy-mwan3-ipk
+          path: upload/*.ipk
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: upload/*.ipk
+          tag: ${{ github.ref }}
+          file_glob: true
