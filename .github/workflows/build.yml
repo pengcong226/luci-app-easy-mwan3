@@ -1,0 +1,50 @@
+name: Build OpenWrt Package
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Prepare OpenWrt SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3
+          # Download SDK (Target: x86/64 for broad compatibility testing, or use specific target)
+          wget https://downloads.openwrt.org/releases/23.05.0/targets/x86/64/openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar -xf openwrt-sdk-*.tar.xz
+          mv openwrt-sdk-* sdk
+
+      - name: Prepare Package
+        run: |
+          cd sdk
+          # Create package directory
+          mkdir -p package/luci-app-easy-mwan3
+          # Copy source to package directory (excluding .git and .github)
+          rsync -av --exclude='.git' --exclude='.github' --exclude='sdk' ../ package/luci-app-easy-mwan3/
+          
+          # Update feeds
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Compile Package
+        run: |
+          cd sdk
+          # Select the package
+          echo "CONFIG_PACKAGE_luci-app-easy-mwan3=m" > .config
+          make defconfig
+          # Compile
+          make package/luci-app-easy-mwan3/compile V=s
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-easy-mwan3-v2.1-Ultimate
+          path: sdk/bin/packages/*/base/*.ipk
