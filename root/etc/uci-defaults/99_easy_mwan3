@@ -1,0 +1,10 @@
+#!/bin/sh
+
+uci -q batch <<-EOF
+	delete ucitrack.@easy_mwan3[-1]
+	add ucitrack easy_mwan3
+	set ucitrack.@easy_mwan3[-1].init=easy_mwan3
+	commit ucitrack
+EOF
+
+exit 0
