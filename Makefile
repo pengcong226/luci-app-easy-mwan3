@@ -10,25 +10,17 @@ PKG_LICENSE:=MIT
 include $(INCLUDE_DIR)/package.mk
 
 define Package/luci-app-easy-mwan3
-  SECTION:=luci
-  CATEGORY:=LuCI
-  SUBMENU:=3. Applications
-  TITLE:=Easy MWAN3 Configurator (Ultimate Edition)
-  DEPENDS:=+luci-base +mwan3 +ip-full +ipset
-  PKGARCH:=all
+	SECTION:=luci
+	CATEGORY:=LuCI
+	SUBMENU:=3. Applications
+	TITLE:=Easy MWAN3 Configurator (Ultimate Edition)
+	DEPENDS:=+luci-base +mwan3 +ip-full +ipset
+	PKGARCH:=all
 endef
 
 define Package/luci-app-easy-mwan3/description
-  Easy MWAN3 Configurator is a user-friendly LuCI interface for configuring MWAN3 load balancing.
-  
-  Features:
-  - One-click Load Balancing setup
-  - Hybrid Strategy (Balance + Failover)
-  - Device-based Policy Routing (Source IP/MAC)
-  - DHCP Lease integration for easy device selection
-  - Automatic Metric & Weight calculation
-  
-  v2.1 Ultimate Edition
+	Easy MWAN3 Configurator is a user-friendly LuCI interface for configuring MWAN3 load balancing.
+	v2.1 Ultimate Edition with Hybrid Strategy Engine.
 endef
 
 define Build/Compile
