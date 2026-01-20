@@ -1,0 +1,62 @@
+name: Build Easy MWAN3
+
+on:
+  push:
+    branches: 
+      - main
+      - master
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build IPK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenWrt SDK
+        run: |
+          # 使用 OpenWrt 23.05 x86_64 SDK (通用性好，编译速度快)
+          wget https://downloads.openwrt.org/releases/23.05.2/targets/x86/64/openwrt-sdk-23.05.2-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar -xvf openwrt-sdk-*.tar.xz
+          mv openwrt-sdk-* sdk
+
+      - name: Prepare Package
+        run: |
+          # 将当前源码复制到 SDK 的 package 目录
+          mkdir -p sdk/package/luci-app-easy-mwan3
+          cp -r Makefile root luasrc sdk/package/luci-app-easy-mwan3/
+
+      - name: Install Feeds
+        working-directory: sdk
+        run: |
+          # 更新并安装所有 feeds (为了获取依赖库的定义)
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Compile Package
+        working-directory: sdk
+        run: |
+          # 生成默认配置
+          make defconfig
+          # 开始编译 (V=s 显示详细日志)
+          make package/luci-app-easy-mwan3/compile V=s
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-easy-mwan3-ipk
+          path: sdk/bin/packages/*/base/luci-app-easy-mwan3_*.ipk
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: sdk/bin/packages/*/base/luci-app-easy-mwan3_*.ipk
+          tag: ${{ github.ref }}
+          file_glob: true

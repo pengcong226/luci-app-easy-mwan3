@@ -1,0 +1,123 @@
+#!/bin/sh
+# Easy MWAN3 Config Generator
+# Powered by Antigravity
+
+. /lib/functions.sh
+
+CONFIG="easy_mwan3"
+MWAN_CFG="/etc/config/mwan3"
+BACKUP_CFG="/etc/config/mwan3.bak"
+
+log() {
+    logger -t "easy_mwan3" "$1"
+    echo "$1"
+}
+
+generate_config() {
+    local enabled=$(uci -q get ${CONFIG}.global.enabled)
+    local mode=$(uci -q get ${CONFIG}.global.mode)
+    local check_ip=$(uci -q get ${CONFIG}.global.check_ip)
+    
+    [ "$enabled" != "1" ] && log "Plugin disabled, skipping generation." && return 0
+    
+    log "Generating MWAN3 config (Mode: $mode)..."
+    
+    # 1. 备份现有配置
+    cp "$MWAN_CFG" "$BACKUP_CFG"
+    
+    # 2. 初始化 MWAN3
+    echo "config globals 'globals'" > "$MWAN_CFG"
+    echo "	option mmx_mask '0x3F00'" >> "$MWAN_CFG"
+    echo "	option local_source 'lan'" >> "$MWAN_CFG"
+    
+    # 3. 遍历接口
+    local ifaces=""
+    local members=""
+    
+    config_load "${CONFIG}"
+    handle_interface() {
+        local section="$1"
+        local iface=$(config_get "$section" "interface")
+        local weight=$(config_get "$section" "weight" "1")
+        local metric=$(config_get "$section" "metric" "10")
+        
+        [ -z "$iface" ] && return
+        
+        # 添加接口定义
+        echo "" >> "$MWAN_CFG"
+        echo "config interface '$iface'" >> "$MWAN_CFG"
+        echo "	option enabled '1'" >> "$MWAN_CFG"
+        echo "	list track_ip '$check_ip'" >> "$MWAN_CFG"
+        echo "	option reliability '1'" >> "$MWAN_CFG"
+        echo "	option count '1'" >> "$MWAN_CFG"
+        echo "	option timeout '2'" >> "$MWAN_CFG"
+        echo "	option interval '5'" >> "$MWAN_CFG"
+        echo "	option down '3'" >> "$MWAN_CFG"
+        echo "	option up '3'" >> "$MWAN_CFG"
+        
+        # 添加 Member 定义
+        echo "" >> "$MWAN_CFG"
+        echo "config member '${iface}_m'" >> "$MWAN_CFG"
+        echo "	option interface '$iface'" >> "$MWAN_CFG"
+        
+        if [ "$mode" = "balance" ]; then
+            # 均衡模式：Metric=1，权重生效
+            echo "	option metric '1'" >> "$MWAN_CFG"
+            echo "	option weight '$weight'" >> "$MWAN_CFG"
+        else
+            # 故障转移模式：Metric 生效，权重=1
+            echo "	option metric '$metric'" >> "$MWAN_CFG"
+            echo "	option weight '1'" >> "$MWAN_CFG"
+        fi
+        
+        ifaces="$ifaces $iface"
+        members="$members ${iface}_m"
+    }
+    config_foreach handle_interface "interface"
+    
+    # 4. 生成 Policy (策略)
+    echo "" >> "$MWAN_CFG"
+    echo "config policy 'easy_policy'" >> "$MWAN_CFG"
+    for m in $members; do
+        echo "	list use_member '$m'" >> "$MWAN_CFG"
+    done
+    echo "	option last_resort 'unreachable'" >> "$MWAN_CFG"
+    
+    # 5. 生成 Rule (规则)
+    # 默认规则：所有流量走 easy_policy
+    echo "" >> "$MWAN_CFG"
+    echo "config rule 'default_rule'" >> "$MWAN_CFG"
+    echo "	option dest_ip '0.0.0.0/0'" >> "$MWAN_CFG"
+    echo "	option proto 'all'" >> "$MWAN_CFG"
+    echo "	option sticky '0'" >> "$MWAN_CFG"
+    echo "	option use_policy 'easy_policy'" >> "$MWAN_CFG"
+    
+    # HTTPS 粘滞规则 (可选，防止网银/游戏掉线)
+    echo "" >> "$MWAN_CFG"
+    echo "config rule 'https_sticky'" >> "$MWAN_CFG"
+    echo "	option dest_port '443'" >> "$MWAN_CFG"
+    echo "	option proto 'tcp'" >> "$MWAN_CFG"
+    echo "	option sticky '1'" >> "$MWAN_CFG"
+    echo "	option use_policy 'easy_policy'" >> "$MWAN_CFG"
+    
+    log "Config generation complete."
+}
+
+restart_mwan3() {
+    log "Restarting MWAN3 service..."
+    /etc/init.d/mwan3 restart
+}
+
+case "$1" in
+    generate)
+        generate_config
+        ;;
+    restart)
+        generate_config
+        restart_mwan3
+        ;;
+    *)
+        echo "Usage: $0 {generate|restart}"
+        exit 1
+        ;;
+esac

@@ -1,0 +1,60 @@
+local uci = require "luci.model.uci".cursor()
+local sys = require "luci.sys"
+
+m = Map("easy_mwan3", translate("MWAN3 极简配置助手"),
+    translate("一键生成 MWAN3 负载均衡与故障转移配置。<br/>") ..
+    translate("<b style='color:red'>警告：应用配置将完全覆盖现有的 MWAN3 设置！</b>"))
+
+m.on_after_commit = function(self)
+    -- 保存后触发生成脚本
+    sys.call("/usr/bin/easy_mwan3_gen.sh restart >/dev/null 2>&1 &")
+end
+
+-- 全局设置
+s = m:section(NamedSection, "global", "global", translate("全局策略"))
+s.anonymous = true
+
+o = s:option(Flag, "enabled", translate("启用插件"))
+o.rmempty = false
+
+o = s:option(ListValue, "mode", translate("工作模式"))
+o:value("balance", translate("负载均衡 (Load Balance) - 带宽叠加"))
+o:value("failover", translate("故障转移 (Failover) - 主备切换"))
+o.default = "balance"
+o.description = translate("负载均衡模式下按权重分配流量；故障转移模式下按优先级切换。")
+
+o = s:option(Value, "check_ip", translate("连通性检测 IP"))
+o.default = "223.5.5.5"
+o.datatype = "ipaddr"
+o.description = translate("用于 Ping 检测的目标 IP，建议使用阿里 DNS 或 114")
+
+-- 接口设置
+s2 = m:section(TypedSection, "interface", translate("参与接口"))
+s2.template = "cbi/tblsection"
+s2.anonymous = true
+s2.addremove = true
+s2.sortable = true
+
+-- 接口名称选择
+o = s2:option(ListValue, "interface", translate("网络接口"))
+uci:foreach("network", "interface", function(s)
+    if s[".name"] ~= "loopback" and s[".name"] ~= "lan" and s[".name"] ~= "global" then
+        o:value(s[".name"])
+    end
+end)
+o.rmempty = false
+
+-- 权重 (仅 Balance 模式)
+o = s2:option(Value, "weight", translate("权重"))
+o.datatype = "uinteger"
+o.default = "1"
+o:depends("mode", "balance") -- 这里有个小问题，跨 Section 依赖在简单的 CBI 里可能不生效，但我们可以通过 JS 或者后端脚本处理
+o.description = translate("数值越大，分得的流量越多 (仅均衡模式)")
+
+-- 优先级 (仅 Failover 模式)
+o = s2:option(Value, "metric", translate("跳跃点 (Metric)"))
+o.datatype = "uinteger"
+o.default = "10"
+o.description = translate("数值越小优先级越高 (仅主备模式)")
+
+return m

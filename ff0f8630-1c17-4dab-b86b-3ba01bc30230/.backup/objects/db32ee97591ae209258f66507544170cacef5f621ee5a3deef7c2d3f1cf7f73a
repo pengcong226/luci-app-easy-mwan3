@@ -1,0 +1,96 @@
+module("luci.controller.network-scripts.index", package.seeall)
+
+function index()
+    entry({"admin", "services", "network-scripts"}, firstchild(), _("网络脚本管理"), 60).dependent = false
+    entry({"admin", "services", "network-scripts", "status"}, call("action_status"), _("状态监控"), 10)
+    entry({"admin", "services", "network-scripts", "config"}, cbi("network-scripts/config"), _("基础配置"), 20)
+    entry({"admin", "services", "network-scripts", "schedule"}, cbi("network-scripts/schedule"), _("时间策略"), 25)
+    entry({"admin", "services", "network-scripts", "notify"}, cbi("network-scripts/notify"), _("通知设置"), 28)
+    entry({"admin", "services", "network-scripts", "logs"}, call("action_logs"), _("运行日志"), 30)
+    entry({"admin", "services", "network-scripts", "history"}, call("action_history"), _("历史统计"), 35)
+    entry({"admin", "services", "network-scripts", "control"}, call("action_control"), _("手动控制"), 40)
+    
+    entry({"admin", "services", "network-scripts", "api", "status"}, call("api_status")).leaf = true
+    entry({"admin", "services", "network-scripts", "api", "lock"}, call("api_lock")).leaf = true
+    entry({"admin", "services", "network-scripts", "api", "run"}, call("api_run")).leaf = true
+    entry({"admin", "services", "network-scripts", "api", "quality"}, call("api_quality")).leaf = true
+    entry({"admin", "services", "network-scripts", "api", "history"}, call("api_history")).leaf = true
+end
+
+function action_status() luci.template.render("network-scripts/status") end
+function action_history() luci.template.render("network-scripts/history") end
+function action_control() luci.template.render("network-scripts/control") end
+
+function action_logs()
+    local sys = require "luci.sys"
+    local log_file = luci.http.formvalue("file") or "switch"
+    local level = luci.http.formvalue("level") or "all"
+    local path = "/var/log/network_scripts/network_switch.log"
+    if log_file == "auth" then path = "/var/log/network_scripts/campus_auth.log"
+    elseif log_file == "history" then path = "/var/log/network_scripts/history.log" end
+    
+    local cmd = "tail -n 200 " .. path
+    if level ~= "all" then cmd = "grep -i '\\[" .. level:upper() .. "\\]' " .. path .. " | tail -n 200" end
+    
+    luci.template.render("network-scripts/logs", { content = sys.exec(cmd .. " 2>/dev/null") or "暂无日志", log_file = log_file, level = level })
+end
+
+function api_status()
+    local sys = require "luci.sys"; local http = require "luci.http"
+    local status = {}
+    status.gateway = sys.exec("ip route show default | head -1 | awk '{print $3}' | tr -d '\n'")
+    status.device = sys.exec("ip route show default | head -1 | awk '{print $5}' | tr -d '\n'")
+    status.internet = (sys.call("ping -c 1 -W 2 223.5.5.5 >/dev/null 2>&1") == 0) and "online" or "offline"
+    status.lock_mode = sys.exec("uci -q get network_scripts.network_switch.lock_mode | tr -d '\n'") or "off"
+    status.auth_status = sys.exec(". /usr/lib/network_scripts/auth_status.sh && check_auth_status wan"):gsub("\n", "")
+    
+    local h = tonumber(os.date("%H")); local start = tonumber(sys.exec("uci -q get network_scripts.network_switch.broadband_start") or "6")
+    local end_h = tonumber(sys.exec("uci -q get network_scripts.network_switch.broadband_end") or "24")
+    if status.lock_mode ~= "off" then status.mode = "locked_" .. status.lock_mode
+    elseif h >= start and h < end_h then status.mode = "broadband"
+    else status.mode = "cpe" end
+    
+    http.prepare_content("application/json"); http.write_json(status)
+end
+
+function api_quality()
+    local sys = require "luci.sys"; local http = require "luci.http"
+    local wan = sys.exec("uci -q get network_scripts.network_switch.broadband_device") or "wan"
+    local cpe = sys.exec("uci -q get network_scripts.network_switch.cpe_device") or "lan1"
+    wan = wan:gsub("\n",""); cpe = cpe:gsub("\n","")
+    
+    local function get_q(dev)
+        local r = sys.exec(". /usr/lib/network_scripts/quality.sh && check_network_quality " .. dev):gsub("\n","")
+        if r == "fail" then return {status="offline"} end
+        return { latency=r:match("([^:]+)"), packet_loss=r:match(":(.+)"), score=sys.exec(". /usr/lib/network_scripts/quality.sh && evaluate_quality " .. dev):gsub("\n","") }
+    end
+    
+    http.prepare_content("application/json"); http.write_json({broadband=get_q(wan), cpe=get_q(cpe)})
+end
+
+function api_lock()
+    local sys = require "luci.sys"; local http = require "luci.http"
+    sys.exec("/usr/bin/network_switch.sh lock " .. (http.formvalue("mode") or "off") .. " " .. (http.formvalue("duration") or "0"))
+    http.prepare_content("application/json"); http.write_json({success=true})
+end
+
+function api_run()
+    local sys = require "luci.sys"; local http = require "luci.http"; local action = http.formvalue("action")
+    if action == "test" then
+        http.prepare_content("text/plain"); http.write(sys.exec("/usr/bin/network_switch.sh test 2>&1"))
+    elseif action == "diagnose" then
+        http.prepare_content("text/plain"); http.write(sys.exec("/usr/lib/network_scripts/campus_auth.sh diagnose 2>&1"))
+    else
+        local cmd = "/usr/bin/network_switch.sh"
+        if action == "auth" then cmd = "/usr/lib/network_scripts/campus_auth.sh login"; elseif action == "logout" then cmd = "/usr/lib/network_scripts/campus_auth.sh logout" end
+        sys.exec(cmd .. " >/dev/null 2>&1 &")
+        http.prepare_content("application/json"); http.write_json({success=true})
+    end
+end
+
+function api_history()
+    local sys = require "luci.sys"; local http = require "luci.http"
+    local stats = sys.exec(". /usr/lib/network_scripts/common.sh && get_statistics " .. (http.formvalue("period") or "today"))
+    local recent = sys.exec("tail -n 50 /var/log/network_scripts/history.log 2>/dev/null")
+    http.prepare_content("application/json"); http.write('{"stats":' .. stats .. ',"recent":"' .. recent:gsub("\n", "\\n"):gsub('"', '\\"') .. '"}')
+end

@@ -1,0 +1,40 @@
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=luci-app-easy-mwan3
+PKG_VERSION:=1.0
+PKG_RELEASE:=1
+
+PKG_MAINTAINER:=Antigravity <antigravity@cyber.elf>
+PKG_LICENSE:=MIT
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/luci-app-easy-mwan3
+  SECTION:=luci
+  CATEGORY:=LuCI
+  SUBMENU:=3. Applications
+  TITLE:=Easy Configuration for MWAN3
+  PKGARCH:=all
+  DEPENDS:=+mwan3 +luci-app-mwan3
+endef
+
+define Package/luci-app-easy-mwan3/description
+  A simplified configuration interface for MWAN3 load balancing and failover.
+  Say goodbye to complex policies and rules.
+endef
+
+define Build/Compile
+endef
+
+define Package/luci-app-easy-mwan3/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci
+	$(CP) ./luasrc/* $(1)/usr/lib/lua/luci/
+	
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) ./root/etc/config/easy_mwan3 $(1)/etc/config/easy_mwan3
+	
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) ./root/usr/bin/easy_mwan3_gen.sh $(1)/usr/bin/easy_mwan3_gen.sh
+endef
+
+$(eval $(call BuildPackage,luci-app-easy-mwan3))

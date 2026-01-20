@@ -1,0 +1,36 @@
+<%+header%>
+<style>
+.stat-box{background:#fff;padding:20px;text-align:center;border-radius:10px;box-shadow:0 2px 5px #ddd}
+.stat-num{font-size:30px;font-weight:bold;color:#3498db}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;margin-bottom:20px}
+</style>
+<div class="cbi-map">
+ <h2>📊 历史统计</h2>
+ <div style="margin-bottom:15px">
+  <button onclick="loadStats('today')" id="btn_today" class="cbi-button cbi-button-positive">今日</button>
+  <button onclick="loadStats('week')" id="btn_week" class="cbi-button">本周</button>
+  <button onclick="loadStats('all')" id="btn_all" class="cbi-button">全部</button>
+ </div>
+ <div class="grid">
+  <div class="stat-box"><div class="stat-num" id="s_total">0</div><div>总事件</div></div>
+  <div class="stat-box"><div class="stat-num" id="s_suc" style="color:#27ae60">0</div><div>成功</div></div>
+  <div class="stat-box"><div class="stat-num" id="s_fail" style="color:#e74c3c">0</div><div>失败</div></div>
+  <div class="stat-box"><div class="stat-num" id="s_rate">0%</div><div>成功率</div></div>
+ </div>
+ <h3>最近记录</h3>
+ <div id="list" style="background:#fff;padding:15px;border-radius:10px;max-height:400px;overflow:auto"></div>
+ <script>
+  function loadStats(p){
+   fetch('<%=luci.dispatcher.build_url("admin/services/network-scripts/api")%>/history?period='+p)
+   .then(r=>r.json()).then(d=>{
+    document.getElementById('s_total').innerText=d.stats.total;
+    document.getElementById('s_suc').innerText=d.stats.success;
+    document.getElementById('s_fail').innerText=d.stats.fail;
+    document.getElementById('s_rate').innerText=d.stats.success_rate+'%';
+    document.getElementById('list').innerHTML='<pre style="margin:0">'+d.recent+'</pre>';
+   });
+  }
+  loadStats('today');
+ </script>
+</div>
+<%+footer%>
