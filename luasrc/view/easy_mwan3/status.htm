@@ -1,14 +1,26 @@
-PCVs-- Easy MWAN3 Status View --%>
 <%+header%>
 <h2 name="content"><%:Easy MWAN3 Status%></h2>
 <div class="cbi-map">
     <fieldset class="cbi-section">
-        <legend><%:System Status%></legend>
-        <div style="padding: 10px;">
-            <strong>Running Mode:</strong> <span style="color:green">Hybrid Strategy Engine (Active)</span><br/>
-            <strong>Load Balancing:</strong> Ready<br/>
-            <strong>Keepalive:</strong> Monitoring
+        <legend><%:Current Connection Status%></legend>
+        <div id="mwan3_status_table">
+            <em><%:Loading...%></em>
         </div>
     </fieldset>
 </div>
+<script type="text/javascript">//<![CDATA[
+    XHR.poll(5, '<%=luci.dispatcher.build_url("admin/network/easy_mwan3/status")%>', null,
+        function(x, st) {
+            var tb = document.getElementById('mwan3_status_table');
+            if (st && tb) {
+                var html = '<table class="cbi-section-table"><tr><th>Interface</th><th>Status</th><th>Uptime</th><th>Load (gw)</th></tr>';
+                for (var i = 0; i < st.length; i++) {
+                    html += '<tr><td>' + st[i].iface + '</td><td>' + st[i].status + '</td><td>' + st[i].uptime + '</td><td>' + st[i].load + '</td></tr>';
+                }
+                html += '</table>';
+                tb.innerHTML = html;
+            }
+        }
+    );
+//]]></script>
 <%+footer%>
