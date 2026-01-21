@@ -17,11 +17,10 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup OpenWrt SDK
         run: |
-          # 使用 OpenWrt 23.05 x86_64 SDK (通用性好，编译速度快)
-          wget https://downloads.openwrt.org/releases/23.05.2/targets/x86/64/openwrt-sdk-23.05.2-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          # 使用 OpenWrt 23.05.5 x86_64 SDK (修复下载链接失效问题)
+          wget https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
           tar -xvf openwrt-sdk-*.tar.xz
           mv openwrt-sdk-* sdk
 
