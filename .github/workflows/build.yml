@@ -19,11 +19,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup OpenWrt SDK
         run: |
-          # 切换到阿里云镜像 (Aliyun Mirror) 以解决连接超时/404问题
-          wget https://mirrors.aliyun.com/openwrt/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-          tar -xvf openwrt-sdk-*.tar.xz
+          # 既然 GitHub 在国外，还是连官方源最快！加上重试机制防止手抖。
+          SDK_URL="https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          wget --tries=5 --timeout=20 --no-check-certificate "$SDK_URL" -O sdk.tar.xz
+          tar -xvf sdk.tar.xz
           
-          # 强力修复 Makefile 缩进问题 (将所有行首的4个空格转换为Tab)
+          # 依然要修复 Makefile 缩进，防止编译报错
           sed -i 's/^    /\t/g' Makefile
           mv openwrt-sdk-* sdk
 
