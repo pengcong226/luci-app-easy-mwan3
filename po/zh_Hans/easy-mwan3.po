@@ -1,0 +1,63 @@
+# Chinese (Simplified) translation for luci-app-easy-mwan3
+# Copyright (C) 2024
+# This file is distributed under the same license as the luci-app-easy-mwan3 package.
+#
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+
+msgid "Easy MWAN3"
+msgstr "MWAN3 极简助手"
+
+msgid "Easy MWAN3 Configurator"
+msgstr "MWAN3 极简配置器"
+
+msgid "A simplified, intelligent interface for configuring MWAN3 Load Balancing with Hybrid Strategy support."
+msgstr "一个简化的智能界面，用于配置支持混合策略的 MWAN3 负载均衡。"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Enable Easy MWAN3"
+msgstr "启用 Easy MWAN3"
+
+msgid "Load Balancing Mode"
+msgstr "负载均衡模式"
+
+msgid "Balanced (Weighted)"
+msgstr "均衡模式 (加权)"
+
+msgid "Failover (Active/Backup)"
+msgstr "故障转移 (主备)"
+
+msgid "Participating Interfaces"
+msgstr "参与接口"
+
+msgid "Advanced Device Policies"
+msgstr "高级设备策略"
+
+msgid "Source IP/Device"
+msgstr "源 IP/设备"
+
+msgid "Policy"
+msgstr "策略"
+
+msgid "Default (Follow Global)"
+msgstr "默认 (跟随全局)"
+
+msgid "Force WAN Only"
+msgstr "强制仅 WAN"
+
+msgid "Force WAN2 Only"
+msgstr "强制仅 WAN2"
+
+msgid "Easy MWAN3 Status"
+msgstr "Easy MWAN3 状态"
+
+msgid "Current Connection Status"
+msgstr "当前连接状态"
+
+msgid "Loading..."
+msgstr "加载中..."

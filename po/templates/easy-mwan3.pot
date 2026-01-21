@@ -1,0 +1,62 @@
+# Easy MWAN3 LuCI Application
+# Copyright (C) 2024
+# This file is distributed under the same license as the luci-app-easy-mwan3 package.
+#
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Easy MWAN3"
+msgstr ""
+
+msgid "Easy MWAN3 Configurator"
+msgstr ""
+
+msgid "A simplified, intelligent interface for configuring MWAN3 Load Balancing with Hybrid Strategy support."
+msgstr ""
+
+msgid "Global Settings"
+msgstr ""
+
+msgid "Enable Easy MWAN3"
+msgstr ""
+
+msgid "Load Balancing Mode"
+msgstr ""
+
+msgid "Balanced (Weighted)"
+msgstr ""
+
+msgid "Failover (Active/Backup)"
+msgstr ""
+
+msgid "Participating Interfaces"
+msgstr ""
+
+msgid "Advanced Device Policies"
+msgstr ""
+
+msgid "Source IP/Device"
+msgstr ""
+
+msgid "Policy"
+msgstr ""
+
+msgid "Default (Follow Global)"
+msgstr ""
+
+msgid "Force WAN Only"
+msgstr ""
+
+msgid "Force WAN2 Only"
+msgstr ""
+
+msgid "Easy MWAN3 Status"
+msgstr ""
+
+msgid "Current Connection Status"
+msgstr ""
+
+msgid "Loading..."
+msgstr ""
