@@ -19,9 +19,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup OpenWrt SDK
         run: |
-          # 使用 OpenWrt 23.05.5 x86_64 SDK (修复下载链接失效问题)
-          wget https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          # 切换到阿里云镜像 (Aliyun Mirror) 以解决连接超时/404问题
+          wget https://mirrors.aliyun.com/openwrt/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
           tar -xvf openwrt-sdk-*.tar.xz
+          
+          # 强力修复 Makefile 缩进问题 (将所有行首的4个空格转换为Tab)
+          sed -i 's/^    /\t/g' Makefile
           mv openwrt-sdk-* sdk
 
       - name: Prepare Package
