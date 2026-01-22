@@ -17,36 +17,38 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Setup OpenWrt SDK
         run: |
-          # 既然 GitHub 在国外，还是连官方源最快！加上重试机制防止手抖。
-          SDK_URL="https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
-          wget --tries=5 --timeout=20 --no-check-certificate "$SDK_URL" -O sdk.tar.xz
-          tar -xvf sdk.tar.xz
+          # 使用 OpenWrt 24.10.0 SDK 以匹配 iStoreOS 24.10
+          SDK_URL="https://downloads.openwrt.org/releases/24.10.0/targets/x86/64/openwrt-sdk-24.10.0-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           
-          # 依然要修复 Makefile 缩进，防止编译报错
+          # 安装 zstd 解压工具
+          sudo apt-get update && sudo apt-get install -y zstd
+          
+          # 下载并解压 SDK
+          wget --tries=5 --timeout=60 --no-check-certificate "$SDK_URL" -O sdk.tar.zst
+          tar --use-compress-program=unzstd -xvf sdk.tar.zst
+          
+          # 修复 Makefile 缩进
           sed -i 's/^    /\t/g' Makefile
           mv openwrt-sdk-* sdk
 
       - name: Prepare Package
         run: |
-          # 将当前源码复制到 SDK 的 package 目录
           mkdir -p sdk/package/luci-app-easy-mwan3
           cp -r Makefile root luasrc sdk/package/luci-app-easy-mwan3/
 
       - name: Install Feeds
         working-directory: sdk
         run: |
-          # 更新并安装所有 feeds (为了获取依赖库的定义)
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: Compile Package
         working-directory: sdk
         run: |
-          # 生成默认配置
           make defconfig
-          # 开始编译 (V=s 显示详细日志)
           make package/luci-app-easy-mwan3/compile V=s
 
       - name: Organize Files
