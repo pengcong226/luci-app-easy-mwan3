@@ -33,12 +33,21 @@
 
 ---
 
+## ⚠️ 重要提示
+
+**本插件依赖 mwan3，而 mwan3 仅支持 iptables/fw3，不支持 nftables/fw4。**
+
+如果你的 OpenWrt 使用 firewall4 (fw4)，此插件将无法正常工作。请使用以下替代方案：
+- **策略路由**: 使用 `pbr` (Policy Based Routing)，支持 nftables
+- **回退 fw3**: 安装 iptables 和 firewall3 替换 fw4
+
 ## 🛠️ 安装与使用
 
 ### 安装
 下载 `.ipk` 文件后，上传至路由器安装：
 ```bash
 opkg install luci-app-easy-mwan3_2.1-Ultimate_all.ipk
+opkg install luci-i18n-easy-mwan3-zh-cn  # 中文翻译
 ```
 
 ### 快速上手
